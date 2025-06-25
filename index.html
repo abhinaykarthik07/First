@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Knapsack Quest - Level Progression</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .tooltip {
+      position: relative;
+      cursor: help;
+    }
+    .tooltip::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: 125%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #333;
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      white-space: nowrap;
+      display: none;
+      z-index: 10;
+    }
+    .tooltip:hover::after {
+      display: block;
+    }
+  </style>
+</head>
+<body class="bg-yellow-100 min-h-screen flex items-center justify-center">
+  <!-- Main container -->
+  <div id="container" class="w-full max-w-2xl mx-auto p-6 bg-white rounded-xl shadow-lg text-center"></div>
+
+  <script>
+    const levels = [
+      { level: 1, capacity: 10, requiredScore: 0.6, items: 5 },
+      { level: 2, capacity: 8, requiredScore: 0.7, items: 6 },
+      { level: 3, capacity: 6, requiredScore: 0.8, items: 8 },
+    ];
+
+    const allItems = [
+      { name: "🛡️ Shield", weight: 4, value: 10, lore: "Blocks heavy attacks." },
+      { name: "⚔️ Sword", weight: 3, value: 8, lore: "Forged in dragon fire." },
+      { name: "💍 Ring", weight: 1, value: 6, lore: "Mystical energy pulses within." },
+      { name: "📜 Scroll", weight: 2, value: 5, lore: "Ancient spell of light." },
+      { name: "🍎 Apple", weight: 2, value: 2, lore: "Restores energy." },
+      { name: "👢 Boots", weight: 3, value: 7, lore: "Swift as the wind." },
+      { name: "💎 Gem", weight: 2, value: 9, lore: "Rare and priceless." },
+      { name: "🪙 Coin", weight: 1, value: 4, lore: "Shiny and valuable." }
+    ];
+
+    let currentLevelIndex = 0;
+    let selectedItems = new Set();
+    let currentCapacity = 0;
+    let totalValue = 0;
+
+    function renderLevel(levelObj) {
+      selectedItems.clear();
+      currentCapacity = 0;
+      totalValue = 0;
+      const container = document.getElementById("container");
+      container.innerHTML = `
+        <h2 class="text-2xl font-bold mb-4">Level ${levelObj.level}</h2>
+        <div id="itemsContainer" class="grid grid-cols-2 gap-4 mb-4"></div>
+        <p class="mb-2">Capacity: <span id="capacity">0</span> / <span id="capacityLimit">${levelObj.capacity}</span></p>
+        <p class="mb-2">Total Value: <span id="value">0</span></p>
+        <button onclick="endLevel()" class="bg-blue-600 text-white px-4 py-2 rounded mt-4">Finish Level</button>
+      `;
+      renderItems(levelObj);
+    }
+
+    function renderItems(levelObj) {
+      const container = document.getElementById("itemsContainer");
+      const items = allItems.slice(0, levelObj.items);
+      items.forEach((item, i) => {
+        const btn = document.createElement("button");
+        btn.className = "tooltip border rounded p-2 bg-yellow-100 hover:bg-yellow-200";
+        btn.dataset.tooltip = item.lore;
+        btn.innerHTML = `<strong>${item.name}</strong><br>W: ${item.weight} V: ${item.value}`;
+        btn.onclick = () => selectItem(i, btn, levelObj);
+        container.appendChild(btn);
+      });
+    }
+
+    function selectItem(index, btn, levelObj) {
+      const item = allItems[index];
+      if (selectedItems.has(index)) return;
+      if (currentCapacity + item.weight <= levelObj.capacity) {
+        selectedItems.add(index);
+        currentCapacity += item.weight;
+        totalValue += item.value;
+        btn.classList.add("bg-green-200", "pointer-events-none");
+        updateStats();
+      } else {
+        alert("Too heavy!");
+      }
+    }
+
+    function updateStats() {
+      document.getElementById("capacity").textContent = currentCapacity;
+      document.getElementById("value").textContent = totalValue;
+    }
+
+    function endLevel() {
+      const levelObj = levels[currentLevelIndex];
+      const maxValue = getMaxValue(levelObj.capacity, allItems.slice(0, levelObj.items));
+      const score = totalValue / maxValue;
+      const passed = score >= levelObj.requiredScore;
+
+      const container = document.getElementById("container");
+      container.innerHTML = `
+        <h2 class="text-2xl font-bold mb-4">Level ${levelObj.level} Complete!</h2>
+        <p class="mb-2">Your Score: ${Math.round(score * 100)}%</p>
+        <p class="mb-2">Required: ${Math.round(levelObj.requiredScore * 100)}%</p>
+        ${passed && currentLevelIndex + 1 < levels.length ? 
+          `<button onclick="nextLevel()" class="bg-green-600 text-white px-4 py-2 rounded">Next Level</button>` : 
+          passed ? `<p class='text-green-600 font-bold'>You finished the quest!</p><button onclick="location.reload()" class="mt-4 bg-yellow-600 text-white px-4 py-2 rounded">Play Again</button>` :
+          `<p class='text-red-600 font-bold'>You did not pass. Try again.</p><button onclick="renderLevel(levels[${currentLevelIndex}])" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded">Retry Level</button>`
+        }
+      `;
+    }
+
+    function nextLevel() {
+      currentLevelIndex++;
+      renderLevel(levels[currentLevelIndex]);
+    }
+
+    function getMaxValue(cap, items) {
+      const n = items.length;
+      const dp = Array(n+1).fill(null).map(() => Array(cap+1).fill(0));
+      for (let i = 1; i <= n; i++) {
+        for (let w = 0; w <= cap; w++) {
+          if (items[i-1].weight <= w) {
+            dp[i][w] = Math.max(dp[i-1][w], dp[i-1][w - items[i-1].weight] + items[i-1].value);
+          } else {
+            dp[i][w] = dp[i-1][w];
+          }
+        }
+      }
+      return dp[n][cap];
+    }
+
+    // Start Game
+    renderLevel(levels[0]);
+  </script>
+</body>
+</html>
