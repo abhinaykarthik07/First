@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Knapsack Quest</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes confetti {
+      0% { transform: translateY(-100%); opacity: 1; }
+      100% { transform: translateY(100vh); opacity: 0; }
+    }
+    .confetti {
+      position: fixed;
+      width: 10px;
+      height: 10px;
+      background: gold;
+      animation: confetti 3s linear forwards;
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-r from-yellow-100 via-cyan-100 to-purple-700 min-h-screen p-6">
+  <div class="text-center">
+    <h1 class="text-4xl font-bold bg-red-200 px-6 py-2 inline-block rounded-lg">Knapsack Quest</h1>
+    <p class="text-teal-800 mt-2 font-medium">Choose your items wisely to maximize value within the weight limit</p>
+  </div>
+
+  <div class="flex mt-6 gap-4">
+    <!-- Available Items -->
+    <div class="w-2/3 bg-purple-200 p-4 rounded-xl">
+      <h2 class="text-lg font-semibold mb-4">Available Items</h2>
+      <div id="items-list" class="space-y-4"></div>
+    </div>
+
+    <!-- Game Stats -->
+    <div class="w-1/3 space-y-4">
+      <div class="bg-green-200 p-4 rounded-xl">
+        <h2 class="text-lg font-bold text-orange-800 mb-2">Game Stats</h2>
+        <div class="flex justify-between mb-2">
+          <div><strong>Level:</strong> <span id="level">1</span></div>
+          <div><strong>Score:</strong> <span id="score">0</span></div>
+        </div>
+        <div><strong>Capacity:</strong> <span id="capacity">7</span></div>
+        <div><strong>Total Weight:</strong> <span id="total-weight">0</span></div>
+        <div><strong>Total Value:</strong> <span id="total-value">0</span></div>
+      </div>
+
+      <!-- Controls -->
+      <div class="bg-cyan-200 p-4 rounded-xl grid grid-cols-2 gap-2">
+        <button onclick="submitSelection()" class="bg-yellow-400 rounded px-4 py-2 font-bold">Submit</button>
+        <button onclick="nextLevel()" class="bg-green-400 rounded px-4 py-2 font-bold">Next</button>
+        <button onclick="resetSelection()" class="bg-red-500 text-white rounded px-4 py-2 font-bold">Reset</button>
+        <button onclick="showHint()" class="bg-blue-600 text-white rounded px-4 py-2 font-bold">Hint</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const levels = [
+      [
+        { name: "Helmet", weight: 4, value: 70 },
+        { name: "Armor", weight: 6, value: 130 },
+        { name: "Boots", weight: 3, value: 50 },
+        { name: "Sword", weight: 5, value: 110 },
+        { name: "Ring", weight: 1, value: 30 }
+      ],
+      [
+        { name: "Gold", weight: 3, value: 90 },
+        { name: "Map", weight: 2, value: 50 },
+        { name: "Torch", weight: 2, value: 40 },
+        { name: "Shield", weight: 6, value: 120 },
+        { name: "Potion", weight: 1, value: 20 }
+      ]
+    ];
+
+    let currentLevel = 0;
+    let selected = [];
+    let score = 0;
+    let capacity = 7;
+
+    function renderItems() {
+      const container = document.getElementById("items-list");
+      container.innerHTML = "";
+      const items = levels[currentLevel];
+      items.forEach((item, index) => {
+        const card = document.createElement("div");
+        card.className = "flex justify-between bg-white p-3 rounded-lg shadow";
+        card.innerHTML = `
+          <div>
+            <h3 class="font-semibold">${item.name}</h3>
+            <p>W: ${item.weight} | V: ${item.value}</p>
+          </div>
+          <button class="select-btn bg-gray-200 px-4 py-1 rounded" data-index="${index}">Select</button>
+        `;
+        container.appendChild(card);
+      });
+
+      document.querySelectorAll(".select-btn").forEach(btn => {
+        btn.addEventListener("click", () => toggleSelect(parseInt(btn.dataset.index)));
+      });
+
+      highlightSelected();
+    }
+
+    function toggleSelect(index) {
+      const item = levels[currentLevel][index];
+      const isSelected = selected.includes(index);
+
+      if (!isSelected && getTotalWeight() + item.weight > capacity) {
+        alert("Over capacity! Remove an item first.");
+        return;
+      }
+
+      if (isSelected) {
+        selected = selected.filter(i => i !== index);
+      } else {
+        selected.push(index);
+      }
+      updateStats();
+      highlightSelected();
+    }
+
+    function getTotalWeight() {
+      return selected.reduce((sum, i) => sum + levels[currentLevel][i].weight, 0);
+    }
+
+    function getTotalValue() {
+      return selected.reduce((sum, i) => sum + levels[currentLevel][i].value, 0);
+    }
+
+    function updateStats() {
+      document.getElementById("total-weight").textContent = getTotalWeight();
+      document.getElementById("total-value").textContent = getTotalValue();
+    }
+
+    function highlightSelected() {
+      document.querySelectorAll(".select-btn").forEach((btn, i) => {
+        if (selected.includes(i)) {
+          btn.textContent = "✔️ Selected";
+          btn.classList.remove("bg-gray-200");
+          btn.classList.add("bg-green-300");
+        } else {
+          btn.textContent = "Select";
+          btn.classList.add("bg-gray-200");
+          btn.classList.remove("bg-green-300");
+        }
+      });
+    }
+
+    function submitSelection() {
+      const value = getTotalValue();
+      score += value;
+      document.getElementById("score").textContent = score;
+      celebrate();
+    }
+
+    function resetSelection() {
+      selected = [];
+      updateStats();
+      renderItems();
+    }
+
+    function nextLevel() {
+      if (currentLevel + 1 < levels.length) {
+        currentLevel++;
+        document.getElementById("level").textContent = currentLevel + 1;
+        selected = [];
+        updateStats();
+        renderItems();
+      } else {
+        alert("🎉 Congratulations! You've completed all levels!");
+      }
+    }
+
+    function showHint() {
+      const items = levels[currentLevel];
+      const dp = Array(items.length + 1).fill().map(() => Array(capacity + 1).fill(0));
+
+      for (let i = 1; i <= items.length; i++) {
+        for (let w = 0; w <= capacity; w++) {
+          if (items[i-1].weight <= w) {
+            dp[i][w] = Math.max(dp[i-1][w], dp[i-1][w - items[i-1].weight] + items[i-1].value);
+          } else {
+            dp[i][w] = dp[i-1][w];
+          }
+        }
+      }
+
+      let res = dp[items.length][capacity];
+      let w = capacity;
+      let hintIndices = [];
+
+      for (let i = items.length; i > 0 && res > 0; i--) {
+        if (res !== dp[i-1][w]) {
+          hintIndices.push(i-1);
+          res -= items[i-1].value;
+          w -= items[i-1].weight;
+        }
+      }
+
+      alert("Hint: Select items - " + hintIndices.map(i => items[i].name).join(", "));
+    }
+
+    function celebrate() {
+      for (let i = 0; i < 20; i++) {
+        const confetti = document.createElement("div");
+        confetti.className = "confetti";
+        confetti.style.left = Math.random() * 100 + "%";
+        confetti.style.backgroundColor = `hsl(${Math.random() * 360}, 100%, 50%)`;
+        confetti.style.animationDelay = Math.random() + "s";
+        document.body.appendChild(confetti);
+        setTimeout(() => confetti.remove(), 3000);
+      }
+    }
+
+    renderItems();
+    updateStats();
+  </script>
+</body>
+</html>
